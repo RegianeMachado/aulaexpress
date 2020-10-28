@@ -1,47 +1,67 @@
-// const router = require("../routes");
-
+const bcrypt = require('bcryptjs');
 const Sequelize = require('sequelize');
+const JWT = require('jsonwebtoken');
+const { QueryTypes } = require('sequelize');
+const ConfigDatabase = require('../config/database');
 
-const configDatabase = require('../config/database');
-
-const connection = new Sequelize(configDatabase);
+const connection = new Sequelize(ConfigDatabase);
 
 const AuthController = {
+  async index(req, res) {
+    const { email, password } = req.body;
 
-    async index(req, res){
+    const [user] = await connection.query(
+      'select id, email, password from users where email= $email',
+      {
+        type: QueryTypes.SELECT,
+        bind: { email },
+      }
+    );
 
-        const usuarios = await connection.query("Select * from users");
+    if (!user) {
+      return res.status(401).json({ message: 'Credenciais inválidas!' });
+    }
 
-        return res.send(usuarios)
-    },
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ message: 'Credenciais inválidas!' });
+    }
 
-    show(req, res){
-        console.log('oi')
-    },
+    const token = JWT.sign({ id: user.id }, process.env.APP_SECRET, {
+      expiresIn: '24h',
+    });
 
-    async store(req, res){
-        const { name, email, password } = req.body
-        const now = new Date();
+    return res.status(200).json({ id: user.id, token });
+  },
 
-        const [idUser, err] = await connection.query(`INSERT INTO users (name, email, password, createdAt, updatedAt) 
-                                                VALUES ( $name, $email, $password, $createdAt, $updatedAt ) `, {
-                                                bind: { name, email, password,  createdAt: now, updatedAt: now}
-        })
+  show(req, res) {},
+  async store(req, res) {
+    const { name, email, password } = req.body;
+    const newPassword = bcrypt.hashSync(password, 10);
+    const now = new Date();
+    const [idUser, err] = await connection.query(
+      `INSERT INTO users (name, email, password, createdAt, updatedAt) VALUES ($name, $email, $password, $createdAt, $updatedAt)`,
+      {
+        bind: {
+          name,
+          email,
+          password: newPassword,
+          createdAt: now,
+          updatedAt: now,
+        },
+        raw: true,
+      }
+    );
 
-        if(!err) {
-            return res.status(400).json({details:"Usuario não criado, tente novamente!"})
-        }
+    if (!err) {
+      return res
+        .status(400)
+        .json({ details: 'Usuario não criado, tente novamente!' });
+    }
 
-        return res.status(201).json({id:idUser, name, email})
-    },
-
-    update(req, res){
-        console.log('oi')
-    },
-
-    delete(req, res){
-        console.log('oi')
-    },
-}
+    return res.status(201).json({ id: idUser, name, email });
+  },
+  update(req, res) {},
+  delele(req, res) {},
+};
 
 module.exports = AuthController;
