@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config()
 
 module.exports = {
   username: process.env.DB_USER,
@@ -6,5 +6,5 @@ module.exports = {
   port: process.env.DB_PORT,
   database: process.env.DB_DATABASE,
   host: process.env.DB_HOST,
-  dialect: process.env.DB_DIALECT,
-};
+  dialect: process.env.DB_DIALECT
+}
